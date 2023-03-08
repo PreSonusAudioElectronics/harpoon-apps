@@ -103,6 +103,9 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 	struct cmd *c = mbox->cmd;
 	unsigned int cmd_len;
 
+	if (!len)
+		return -1;
+
 	if (mbox->dir)
 		return -1;
 
@@ -112,7 +115,7 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 #else
 	/* check if new command */
 	if (c->seq == mbox->last_cmd)
-		return -1;
+		return -4;
 
 	mbox->last_cmd = c->seq;
 
@@ -123,6 +126,9 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 	if (cmd_len <= *len)
 		*len = cmd_len;
+	
+	if (cmd_len > *len)
+		return -2;
 
 	memcpy(data, c->data, *len);
 
