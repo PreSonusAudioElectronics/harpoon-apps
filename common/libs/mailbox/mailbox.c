@@ -76,7 +76,7 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 #else
 	/* check if new response */
 	if (r->seq == mbox->last_resp)
-		return -1;
+		return -4;
 
 	mbox->last_resp = r->seq;
 
