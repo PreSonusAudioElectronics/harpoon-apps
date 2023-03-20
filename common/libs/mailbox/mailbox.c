@@ -39,10 +39,10 @@ int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 	struct cmd *c = mbox->cmd;
 
 	if (!mbox->dir)
-		return -1;
+		return kMailboxWrongDirection;
 
 	if (len > MAX_PAYLOAD)
-		return -1;
+		return kMailboxMsgTooBig;
 
 	/* write new command */
 	c->len = len;
@@ -59,7 +59,7 @@ int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 		return -3;
 #endif
 
-	return 0;
+	return kMailboxSuccess;
 }
 
 int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
@@ -68,7 +68,7 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 	unsigned int resp_len;
 
 	if (!mbox->dir)
-		return -1;
+		return kMailboxWrongDirection;
 
 #ifdef MBOX_TRANSPORT_RPMSG
 	if (rpmsg_recv(mbox->transport, r, sizeof(*r)))
@@ -76,7 +76,7 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 #else
 	/* check if new response */
 	if (r->seq == mbox->last_resp)
-		return -4;
+		return kMailboxNoNewResponse;
 
 	mbox->last_resp = r->seq;
 
@@ -84,7 +84,7 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 	/* check if it matches command */
 	if (r->seq != mbox->last_cmd)
-		return -2;
+		return kMailboxOutOfSequence;
 #endif
 
 	resp_len = r->len;
@@ -94,7 +94,7 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 	memcpy(data, r->data, *len);
 
-	return 0;
+	return kMailboxSuccess;
 }
 
 /* Command Receiver */
@@ -103,11 +103,11 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 	struct cmd *c = mbox->cmd;
 	unsigned int cmd_len;
 
-	if (!len)
-		return -1;
+	if ((!len) || (!data) || (!mbox))
+		return kMailboxBadArgument;
 
 	if (mbox->dir)
-		return -1;
+		return kMailboxWrongDirection;
 
 #ifdef MBOX_TRANSPORT_RPMSG
 	if (rpmsg_recv(mbox->transport, c, sizeof(*c)))
@@ -115,7 +115,7 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 #else
 	/* check if new command */
 	if (c->seq == mbox->last_cmd)
-		return -4;
+		return kMailboxNoNewCommand;
 
 	mbox->last_cmd = c->seq;
 
@@ -128,11 +128,11 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 		*len = cmd_len;
 	
 	if (cmd_len > *len)
-		return -2;
+		return kMailboxBufferTooSmall;
 
 	memcpy(data, c->data, *len);
 
-	return 0;
+	return kMailboxSuccess;
 }
 
 int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
@@ -140,10 +140,10 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 	struct resp *r = mbox->resp;
 
 	if (mbox->dir)
-		return -1;
+		return kMailboxWrongDirection;
 
 	if (len > MAX_PAYLOAD)
-		return -1;
+		return kMailboxMsgTooBig;
 
 	/* write new response */
 	r->len = len;
@@ -158,7 +158,7 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 		return -3;
 #endif
 
-	return 0;
+	return kMailboxSuccess;
 }
 
 int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, void *tp)
@@ -199,5 +199,5 @@ int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, void *tp
 		r->seq = mbox->last_resp;
 	}
 
-	return 0;
+	return kMailboxSuccess;
 }

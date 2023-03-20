@@ -9,6 +9,18 @@
 
 #include <stdbool.h>
 
+enum mailbox_ret_codes
+{
+	kMailboxWrongDirection = -16,
+	kMailboxMsgTooBig,
+	kMailboxNoNewResponse,
+	kMailboxOutOfSequence,
+	kMailboxBadArgument,
+	kMailboxNoNewCommand,
+	kMailboxBufferTooSmall,
+	kMailboxSuccess = 0
+};
+
 struct mailbox {
 	bool dir;
 	unsigned int last_cmd;
