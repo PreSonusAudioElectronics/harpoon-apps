@@ -161,7 +161,8 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 	return kMailboxSuccess;
 }
 
-int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, void *tp)
+int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, 
+	void *tp, bool enforce_sequence)
 {
 	struct resp *r;
 	struct cmd *c;
@@ -170,6 +171,7 @@ int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, void *tp
 	mbox->dir = dir;
 	mbox->cmd = cmd;
 	mbox->resp = resp;
+	mbox->enforce_sequence = enforce_sequence;
 
 	c = cmd;
 	r = resp;
