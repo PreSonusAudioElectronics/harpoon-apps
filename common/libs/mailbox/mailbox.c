@@ -82,9 +82,13 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 	__DSB();
 
-	/* check if it matches command */
-	if (r->seq != mbox->last_cmd)
-		return kMailboxOutOfSequence;
+	if (mbox->enforce_sequence)
+	{
+		/* check if it matches command */
+		if (r->seq != mbox->last_cmd)
+			return kMailboxOutOfSequence;
+	}
+
 #endif
 
 	resp_len = r->len;
