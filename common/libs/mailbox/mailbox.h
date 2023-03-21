@@ -18,6 +18,7 @@ enum mailbox_ret_codes
 	kMailboxBadArgument,
 	kMailboxNoNewCommand,
 	kMailboxBufferTooSmall,
+	kMailboxPrevMsgNotYetRead,
 	kMailboxSuccess = 0
 };
 
@@ -28,7 +29,7 @@ struct mailbox {
 	void *cmd;
 	void *resp;
 	void *transport;
-	bool enforce_sequence;
+	bool enforce_cmd_match_on_rx;
 };
 
 int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len);
@@ -37,6 +38,6 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len);
 int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len);
 
 int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, 
-	void *tp, bool enforce_sequence);
+	void *tp, bool enforce_cmd_match_on_rx);
 
 #endif /* _MAILBOX_H_ */

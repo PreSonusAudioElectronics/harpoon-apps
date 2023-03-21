@@ -23,12 +23,14 @@
 
 struct cmd {
 	volatile uint32_t seq;
+	volatile uint32_t recvd;
 	uint32_t len;
 	uint8_t data[MAX_PAYLOAD];
 };
 
 struct resp {
 	volatile uint32_t seq;
+	volatile uint32_t recvd;
 	uint32_t len;
 	uint8_t data[MAX_PAYLOAD];
 };
@@ -43,8 +45,12 @@ int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 
 	if (len > MAX_PAYLOAD)
 		return kMailboxMsgTooBig;
+	
+	if (c->recvd == 0)
+		return kMailboxPrevMsgNotYetRead;
 
 	/* write new command */
+	c->recvd = 0;
 	c->len = len;
 	memcpy(c->data, data, len);
 
@@ -80,9 +86,7 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 	mbox->last_resp = r->seq;
 
-	__DSB();
-
-	if (mbox->enforce_sequence)
+	if (mbox->enforce_cmd_match_on_rx)
 	{
 		/* check if it matches command */
 		if (r->seq != mbox->last_cmd)
@@ -97,6 +101,12 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 		*len = resp_len;
 
 	memcpy(data, r->data, *len);
+
+	r->recvd = 1;
+
+#ifndef MBOX_TRANSPORT_RPMSG
+	__DSB ();
+#endif
 
 	return kMailboxSuccess;
 }
@@ -123,7 +133,7 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 	mbox->last_cmd = c->seq;
 
-	__DSB();
+	// __DSB();
 #endif
 
 	cmd_len = c->len;
@@ -135,6 +145,12 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 		return kMailboxBufferTooSmall;
 
 	memcpy(data, c->data, *len);
+
+	c->recvd = 1;
+
+#ifndef MBOX_TRANSPORT_RPMSG
+	__DSB();
+#endif
 
 	return kMailboxSuccess;
 }
@@ -149,9 +165,13 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 	if (len > MAX_PAYLOAD)
 		return kMailboxMsgTooBig;
 
+	if (r->recvd == 0)
+		return kMailboxPrevMsgNotYetRead;
+
 	/* write new response */
 	r->len = len;
 	memcpy(r->data, data, len);
+	r->recvd = 0;
 
 #ifndef MBOX_TRANSPORT_RPMSG
 	__DSB();
@@ -166,7 +186,7 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 }
 
 int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, 
-	void *tp, bool enforce_sequence)
+	void *tp, bool enforce_cmd_match_on_rx)
 {
 	struct resp *r;
 	struct cmd *c;
@@ -175,7 +195,7 @@ int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir,
 	mbox->dir = dir;
 	mbox->cmd = cmd;
 	mbox->resp = resp;
-	mbox->enforce_sequence = enforce_sequence;
+	mbox->enforce_cmd_match_on_rx = enforce_cmd_match_on_rx;
 
 	c = cmd;
 	r = resp;
@@ -204,6 +224,9 @@ int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir,
 
 		r->seq = mbox->last_resp;
 	}
+
+	c->recvd = 1;
+	r->recvd = 1;
 
 	return kMailboxSuccess;
 }
