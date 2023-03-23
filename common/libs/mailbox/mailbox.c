@@ -23,14 +23,14 @@
 
 struct cmd {
 	volatile uint32_t seq;
-	volatile uint32_t recvd;
+	volatile uint32_t last_resp;
 	uint32_t len;
 	uint8_t data[MAX_PAYLOAD];
 };
 
 struct resp {
 	volatile uint32_t seq;
-	volatile uint32_t recvd;
+	volatile uint32_t last_cmd;
 	uint32_t len;
 	uint8_t data[MAX_PAYLOAD];
 };
@@ -39,6 +39,7 @@ struct resp {
 int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 {
 	struct cmd *c = mbox->cmd;
+	struct resp *r = mbox->resp;
 
 	if (!mbox->dir)
 		return kMailboxWrongDirection;
@@ -46,11 +47,10 @@ int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 	if (len > MAX_PAYLOAD)
 		return kMailboxMsgTooBig;
 	
-	if (c->recvd == 0)
+	if (r->last_cmd != mbox->last_cmd)
 		return kMailboxPrevMsgNotYetRead;
 
 	/* write new command */
-	c->recvd = 0;
 	c->len = len;
 	memcpy(c->data, data, len);
 
@@ -71,6 +71,7 @@ int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 {
 	struct resp *r = mbox->resp;
+	struct cmd *c = mbox->cmd;
 	unsigned int resp_len;
 
 	if (!mbox->dir)
@@ -102,7 +103,7 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 	memcpy(data, r->data, *len);
 
-	r->recvd = 1;
+	c->last_resp = mbox->last_resp;
 
 #ifndef MBOX_TRANSPORT_RPMSG
 	__DSB ();
@@ -115,6 +116,7 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 {
 	struct cmd *c = mbox->cmd;
+	struct resp *r = mbox->resp;
 	unsigned int cmd_len;
 
 	if ((!len) || (!data) || (!mbox))
@@ -146,7 +148,7 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 	memcpy(data, c->data, *len);
 
-	c->recvd = 1;
+	r->last_cmd = mbox->last_cmd;
 
 #ifndef MBOX_TRANSPORT_RPMSG
 	__DSB();
@@ -158,6 +160,7 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 {
 	struct resp *r = mbox->resp;
+	struct cmd *c = mbox->cmd;
 
 	if (mbox->dir)
 		return kMailboxWrongDirection;
@@ -165,13 +168,12 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 	if (len > MAX_PAYLOAD)
 		return kMailboxMsgTooBig;
 
-	if (r->recvd == 0)
+	if (c->last_resp != r->seq)
 		return kMailboxPrevMsgNotYetRead;
 
 	/* write new response */
 	r->len = len;
 	memcpy(r->data, data, len);
-	r->recvd = 0;
 
 #ifndef MBOX_TRANSPORT_RPMSG
 	__DSB();
@@ -210,6 +212,8 @@ int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir,
 			mbox->last_cmd++;
 
 		mbox->last_resp = r->seq;
+
+		memset (c, 0, sizeof (struct cmd));
 	} else {
 		/* command receiver */
 		/* always ignore first pending command */
@@ -223,10 +227,9 @@ int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir,
 			mbox->last_resp++;
 
 		r->seq = mbox->last_resp;
-	}
 
-	c->recvd = 1;
-	r->recvd = 1;
+		memset (r, 0, sizeof (struct resp));
+	}
 
 	return kMailboxSuccess;
 }
