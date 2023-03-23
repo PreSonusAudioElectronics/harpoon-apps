@@ -19,6 +19,7 @@ enum mailbox_ret_codes
 	kMailboxNoNewCommand,
 	kMailboxBufferTooSmall,
 	kMailboxPrevMsgNotYetRead,
+	kMailboxOtherSideNotInitialized,
 	kMailboxSuccess = 0
 };
 
@@ -30,6 +31,7 @@ struct mailbox {
 	void *resp;
 	void *transport;
 	bool enforce_cmd_match_on_rx;
+	uint32_t magic;
 };
 
 int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len);
