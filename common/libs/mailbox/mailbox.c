@@ -39,11 +39,14 @@ struct resp {
 	uint8_t data[MAX_PAYLOAD];
 };
 
+struct cmd *g_cmd;
+struct resp *g_resp;
+
 /* Command Sender */
 int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 {
-	struct cmd *c = (struct cmd *)mbox->cmd;
-	struct resp *r = (struct resp *)mbox->resp;
+	struct cmd *l_cmd = (struct cmd *)mbox->cmd;
+	struct resp *l_resp = (struct resp *)mbox->resp;
 
 	if (!mbox->dir)
 		return kMailboxWrongDirection;
@@ -51,17 +54,17 @@ int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 	if (len > MAX_PAYLOAD)
 		return kMailboxMsgTooBig;
 	
-	if (r->last_cmd != mbox->last_cmd)
+	if (l_resp->last_cmd != mbox->last_cmd)
 		return kMailboxPrevMsgNotYetRead;
 
 	/* write new command */
-	c->len = len;
-	memcpy(c->data, data, len);
+	l_cmd->len = len;
+	memcpy(l_cmd->data, data, len);
 
 #ifndef MBOX_TRANSPORT_RPMSG
 	mbox->last_cmd += 1;
 
-	c->seq = mbox->last_cmd;
+	l_cmd->seq = mbox->last_cmd;
 
 	__DSB();
 #else
@@ -74,8 +77,8 @@ int mailbox_cmd_send(struct mailbox *mbox, void *data, unsigned int len)
 
 int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 {
-	struct resp *r = mbox->resp;
-	struct cmd *c = mbox->cmd;
+	struct resp *l_resp = mbox->resp;
+	struct cmd *l_cmd = mbox->cmd;
 	unsigned int resp_len;
 
 	if (!mbox->dir)
@@ -85,32 +88,32 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 	if (rpmsg_recv(mbox->transport, r, sizeof(*r)))
 		return -3;
 #else
-	if (r->magic != MAILBOX_MAGIC)
+	if (l_resp->magic != MAILBOX_MAGIC)
 		return kMailboxOtherSideNotInitialized;
 
 	/* check if new response */
-	if (r->seq == mbox->last_resp)
+	if (l_resp->seq == mbox->last_resp)
 		return kMailboxNoNewResponse;
 
-	mbox->last_resp = r->seq;
+	mbox->last_resp = l_resp->seq;
 
 	if (mbox->enforce_cmd_match_on_rx)
 	{
 		/* check if it matches command */
-		if (r->seq != mbox->last_cmd)
+		if (l_resp->seq != mbox->last_cmd)
 			return kMailboxOutOfSequence;
 	}
 
 #endif
 
-	resp_len = r->len;
+	resp_len = l_resp->len;
 
 	if (resp_len <= *len)
 		*len = resp_len;
 
-	memcpy(data, r->data, *len);
+	memcpy(data, l_resp->data, *len);
 
-	c->last_resp = mbox->last_resp;
+	l_cmd->last_resp = mbox->last_resp;
 
 #ifndef MBOX_TRANSPORT_RPMSG
 	__DSB ();
@@ -122,8 +125,8 @@ int mailbox_resp_recv(struct mailbox *mbox, void *data, unsigned int *len)
 /* Command Receiver */
 int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 {
-	struct cmd *c = mbox->cmd;
-	struct resp *r = mbox->resp;
+	struct cmd *l_cmd = mbox->cmd;
+	struct resp *l_resp = mbox->resp;
 	unsigned int cmd_len;
 
 	if ((!len) || (!data) || (!mbox))
@@ -132,7 +135,7 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 	if (mbox->dir)
 		return kMailboxWrongDirection;
 	
-	if (c->magic != MAILBOX_MAGIC)
+	if (l_cmd->magic != MAILBOX_MAGIC)
 		return kMailboxOtherSideNotInitialized;
 
 #ifdef MBOX_TRANSPORT_RPMSG
@@ -140,16 +143,16 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 		return -3;
 #else
 	/* check if new command */
-	if (c->seq == mbox->last_cmd)
+	if (l_cmd->seq == mbox->last_cmd)
 	{
 		return kMailboxNoNewCommand;
 	}
 
-	mbox->last_cmd = c->seq;
+	mbox->last_cmd = l_cmd->seq;
 
 #endif
 
-	cmd_len = c->len;
+	cmd_len = l_cmd->len;
 
 	if (cmd_len <= *len)
 		*len = cmd_len;
@@ -157,9 +160,9 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 	if (cmd_len > *len)
 		return kMailboxBufferTooSmall;
 
-	memcpy(data, c->data, *len);
+	memcpy(data, l_cmd->data, *len);
 
-	r->last_cmd = mbox->last_cmd;
+	l_resp->last_cmd = mbox->last_cmd;
 
 #ifndef MBOX_TRANSPORT_RPMSG
 	__DSB();
@@ -170,8 +173,8 @@ int mailbox_cmd_recv(struct mailbox *mbox, void *data, unsigned int *len)
 
 int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 {
-	struct resp *r = mbox->resp;
-	struct cmd *c = mbox->cmd;
+	struct resp *l_resp = mbox->resp;
+	struct cmd *l_cmd = mbox->cmd;
 
 	if (mbox->dir)
 		return kMailboxWrongDirection;
@@ -179,22 +182,22 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 	if (len > MAX_PAYLOAD)
 		return kMailboxMsgTooBig;
 
-	if (c->magic != MAILBOX_MAGIC)
+	if (l_cmd->magic != MAILBOX_MAGIC)
 	{
 		return kMailboxOtherSideNotInitialized;
 	}
 
-	if (c->last_resp != r->seq)
+	if (l_cmd->last_resp != l_resp->seq)
 		return kMailboxPrevMsgNotYetRead;
 
 	/* write new response */
-	r->len = len;
-	memcpy(r->data, data, len);
+	l_resp->len = len;
+	memcpy(l_resp->data, data, len);
 
 #ifndef MBOX_TRANSPORT_RPMSG
 	__DSB();
 
-	r->seq = mbox->last_cmd;
+	l_resp->seq = mbox->last_cmd;
 #else
 	if (rpmsg_send(mbox->transport, r, sizeof(*r)))
 		return -3;
@@ -206,8 +209,8 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, 
 	void *tp, bool enforce_cmd_match_on_rx)
 {
-	struct resp *r;
-	struct cmd *c;
+	struct resp *l_resp;
+	struct cmd *l_cmd;
 
 	mbox->transport = tp;
 	mbox->dir = dir;
@@ -215,51 +218,62 @@ int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir,
 	mbox->resp = resp;
 	mbox->enforce_cmd_match_on_rx = enforce_cmd_match_on_rx;
 
-	c = cmd;
-	r = resp;
+	l_cmd = cmd;
+	l_resp = resp;
+
+	g_cmd = l_cmd;
+	g_resp = l_resp;
 
 	if (dir) {
 		
 		/* command sender */
 
 		/* If the other side is initialized, sync with it */
-		if (r->magic == MAILBOX_MAGIC)
+		if (l_resp->magic == MAILBOX_MAGIC)
 		{
-			mbox->last_cmd = r->last_cmd;
-			c->seq = r->last_cmd;
-			mbox->last_resp = r->seq;
+			mbox->last_cmd = l_resp->last_cmd;
+			l_cmd->seq = l_resp->last_cmd;
+			mbox->last_resp = l_resp->seq;
+			l_cmd->last_resp = l_resp->seq;
 		}
 		else
 		{
-			memset (c, 0, sizeof (struct cmd));
+			memset (l_cmd, 0, sizeof (struct cmd));
 			/* just initialize with current state */
-			mbox->last_cmd = c->seq;
+			mbox->last_cmd = l_cmd->seq;
 		}
 
-		c->magic = MAILBOX_MAGIC;
+
+		l_cmd->magic = MAILBOX_MAGIC;
+
+		__asm ("nop");
 	} else {
 		/* command receiver */
-		memset (r, 0, sizeof (struct resp));
 
-		if (c->magic == MAILBOX_MAGIC)
+		if (l_cmd->magic == MAILBOX_MAGIC)
 		{
 			/* always ignore first pending command */
-			mbox->last_cmd = c->seq;
-			r->seq = c->last_resp;
+			mbox->last_cmd = l_cmd->seq;
+			l_resp->seq = l_cmd->last_resp;
+			l_resp->last_cmd = mbox->last_cmd;
 		}
 		else
 		{
+			memset (l_resp, 0, sizeof (struct resp));
 			mbox->last_cmd = 0;
 		}
 
 		/* always update response, making sure it changes and
 		 * doesn't match current command */
-		mbox->last_resp = r->seq + 1;
+		mbox->last_resp = l_resp->seq + 1;
 
 		if (mbox->last_resp == mbox->last_cmd)
 			mbox->last_resp++;
 		
-		r->magic = MAILBOX_MAGIC;
+
+		l_resp->magic = MAILBOX_MAGIC;
+
+		__asm ("nop");
 	}
 
 	mbox->magic = MAILBOX_MAGIC;
