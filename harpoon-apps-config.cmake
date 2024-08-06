@@ -1,6 +1,6 @@
 set(harpoon_dir "${CMAKE_CURRENT_LIST_DIR}")
 
-add_library(harpoon-apps)
+add_library(harpoon-apps STATIC)
 
 target_compile_definitions(harpoon-apps PRIVATE
     OS_ZEPHYR=1
@@ -22,40 +22,29 @@ target_include_directories(harpoon-apps PRIVATE
 	${harpoon_dir}/common/
 )
 
-# Add these sources for non-linux environments
-string(FIND "${TARGET_ENVIRONMENT}" "linux" position)
-if( (${position} LESS 0) )
-    ################################
-    # Not a Linux build
-    ###############################
+if(DEFINED ZEPHYR_BASE)
     target_sources(harpoon-apps PRIVATE
         ${harpoon_dir}/common/libs/jailhouse/ivshmem.c
         ${harpoon_dir}/common/libs/hlog/hlog.c
     )
 
-    target_compile_options(harpoon-apps PUBLIC
+    target_compile_options(harpoon-apps PRIVATE
         -Wno-unused-variable
         -Wno-sign-compare
         -Wno-unused-parameter
     )
 
-
     target_include_directories(harpoon-apps PRIVATE
         ${harpoon_dir}/common/libs/jailhouse/
         ${harpoon_dir}/common/libs/hlog
+		${harpoon_dir}/common/zephyr
+		${harpoon_dir}/common/zephyr/boards
+		${ZEPHYR_BASE}/include
     )
 
-    string(FIND "${TARGET_ENVIRONMENT}" "zephyr" zephPosition)
-    if( NOT ${zephPosition} LESS 0)
-        target_link_libraries(harpoon-apps PRIVATE kernel)
-        message (STATUS "adding harpoon-apps zephyr port")
-        target_include_directories(harpoon-apps PRIVATE
-            ${harpoon_dir}/common/zephyr
-            ${harpoon_dir}/common/zephyr/boards
-        )
-    endif()
+	target_link_libraries(harpoon-apps PRIVATE kernel)
 
-else()
+elseif(DEFINED LINUX)
     ################################
     # This is a linux build
     ################################
@@ -73,7 +62,8 @@ else()
     )
 
     target_include_directories(pep PUBLIC ${harpoon_dir})
-
+else()
+	message(FATAL_ERROR "No supported Platform detected")
 endif()
 
 
