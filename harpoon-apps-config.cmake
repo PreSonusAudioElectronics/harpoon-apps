@@ -8,9 +8,7 @@ set(harpoon_dir "${CMAKE_CURRENT_LIST_DIR}")
 
 add_library(harpoon-apps STATIC)
 
-target_compile_definitions(harpoon-apps PRIVATE OS_ZEPHYR=1)
-
-if(${BOARD} STREQUAL "mimx8mn_evk_a53_smp")
+if(DEFINED ${BOARD} AND ${BOARD} STREQUAL "mimx8mn_evk_a53_smp")
   target_compile_definitions(harpoon-apps
                              PRIVATE CONFIG_BOARD_MIMX8MN_EVK_A53=1)
 endif()
@@ -37,6 +35,8 @@ if(DEFINED ZEPHYR_BASE)
             ${harpoon_dir}/common/zephyr/boards ${ZEPHYR_BASE}/include)
 
   target_link_libraries(harpoon-apps PRIVATE kernel)
+
+  target_compile_definitions(harpoon-apps PRIVATE OS_ZEPHYR=1)
 
 elseif(DEFINED LINUX)
   target_sources(harpoon-apps PRIVATE ${harpoon_dir}/ctrl/ivshmem.c)
