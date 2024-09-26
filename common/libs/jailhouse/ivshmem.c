@@ -170,7 +170,7 @@ int ivshmem_init(unsigned int bfd, struct ivshmem *ivshmem)
 
 	ret = os_mmu_map("pci cfg", (uint8_t **)&cfg_base,
 			(uintptr_t)(comm->pci_mmconfig_base), KB(1024),
-			OS_MEM_CACHE_WB | OS_MEM_PERM_RW);
+			OS_MEM_CACHE_NONE | OS_MEM_PERM_RW);
 	if (ret < 0)
 		goto err;
 
@@ -186,7 +186,7 @@ int ivshmem_init(unsigned int bfd, struct ivshmem *ivshmem)
 
 	ret = os_mmu_map("pci mmio", (uint8_t **)&mmio,
 			(uintptr_t)PCI_MMIO_BASE, KB(4),
-			OS_MEM_CACHE_WB | OS_MEM_PERM_RW);
+			OS_MEM_CACHE_NONE | OS_MEM_PERM_RW);
 	if (ret < 0)
 		goto err;
 
