@@ -14,8 +14,9 @@
 
 #include "mailbox.h"
 
-
+#ifndef MAX_PAYLOAD
 #define MAX_PAYLOAD	255
+#endif
 
 #define MAILBOX_MAGIC 0xDAFABEFA
 

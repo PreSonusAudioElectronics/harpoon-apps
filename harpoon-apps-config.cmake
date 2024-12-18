@@ -13,6 +13,8 @@ if(DEFINED ${BOARD} AND ${BOARD} STREQUAL "mimx8mn_evk_a53_smp")
                              PRIVATE CONFIG_BOARD_MIMX8MN_EVK_A53=1)
 endif()
 
+target_compile_definitions(harpoon-apps PRIVATE OS_ZEPHYR=1 MAX_PAYLOAD=4096)
+
 target_sources(harpoon-apps
                PRIVATE ${harpoon_dir}/common/libs/mailbox/mailbox.c)
 
@@ -35,8 +37,6 @@ if(DEFINED ZEPHYR_BASE)
             ${harpoon_dir}/common/zephyr/boards ${ZEPHYR_BASE}/include)
 
   target_link_libraries(harpoon-apps PRIVATE kernel)
-
-  target_compile_definitions(harpoon-apps PRIVATE OS_ZEPHYR=1)
 
 elseif(DEFINED LINUX)
   target_sources(harpoon-apps PRIVATE ${harpoon_dir}/ctrl/ivshmem.c)
