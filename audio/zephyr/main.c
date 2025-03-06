@@ -4,18 +4,15 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <include/audiotypes.h>
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
-
 #include "app_board.h"
+#include "audio_entry.h"
+#include "clock_config.h"
 #include "hlog.h"
 #include "os/assert.h"
-
 #include "pin_mux.h"
-#include "clock_config.h"
-
-#include "audio.h"
-#include "audio_entry.h"
 
 #define STACK_SIZE 4096
 

@@ -4,22 +4,19 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <include/audiotypes.h>
+#include "audio_entry.h"
+#include "audio_pipeline.h"
 #include "hlog.h"
+#include "hrpn_ctrl.h"
+#include "ivshmem.h"
+#include "mailbox.h"
 #include "os/assert.h"
+#include "os/cpu_load.h"
 #include "os/mqueue.h"
 #include "os/semaphore.h"
 #include "os/stdlib.h"
 #include "os/unistd.h"
-#include "os/cpu_load.h"
-
-#include "ivshmem.h"
-#include "mailbox.h"
-#include "hrpn_ctrl.h"
-
-#include "audio.h"
-#include "audio_entry.h"
-
-#include "audio_pipeline.h"
 
 #ifdef MBOX_TRANSPORT_RPMSG
 #include "rpmsg.h"

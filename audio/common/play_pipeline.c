@@ -4,20 +4,18 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <include/audiotypes.h>
+#include "app_board.h"
+#include "audio_pipeline.h"
+#include "codec_config.h"
+#include "hlog.h"
+#include "hrpn_ctrl.h"
 #include "os/assert.h"
 #include "os/semaphore.h"
 #include "os/stdlib.h"
-
-#include "app_board.h"
-
-#include "audio_pipeline.h"
-#include "audio.h"
-#include "hlog.h"
-#include "hrpn_ctrl.h"
-#include "codec_config.h"
 #include "sai_clock_config.h"
-#include "sai_drv.h"
 #include "sai_config.h"
+#include "sai_drv.h"
 
 #if (CONFIG_GENAVB_ENABLE == 1)
 #include "avb_hardware.h"
