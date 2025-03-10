@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <include/audiotypes.h>
+#include <public/audiotypes.h>
 #include "audio_entry.h"
 #include "audio_pipeline.h"
 #include "hlog.h"

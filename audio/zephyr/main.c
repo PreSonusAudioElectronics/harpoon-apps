@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <include/audiotypes.h>
+#include <public/audiotypes.h>
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include "app_board.h"
