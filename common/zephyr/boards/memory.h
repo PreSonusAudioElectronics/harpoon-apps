@@ -27,6 +27,10 @@
 #define	HYPERVISOR_COMM_BASE	0x80000000
 #define	PCI_MMIO_BASE		0xff000000
 
+#elif defined (CONFIG_BOARD_IMX95_DAFFY)
+#define	HYPERVISOR_COMM_BASE	0x80000000
+#define	PCI_MMIO_BASE		0xff000000
+
 #endif
 
 #endif /* _MEMORY_H_ */
