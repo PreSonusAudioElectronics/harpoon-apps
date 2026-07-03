@@ -226,8 +226,6 @@ int ivshmem_init(unsigned int bfd, struct ivshmem *ivshmem)
 				"IVSHMEM peers count(%d) exceed limiation(%d)",
 				ivshmem->peers, MAX_IV_PEERS);
 		for (i = 0; i < ivshmem->peers; i++) {
-			next_addr += i * ivshmem->out_size;
-
 			if (i == ivshmem->id)
 				ret = os_mmu_map("ivshmem out",
 					(uint8_t **)&ivshmem->out[i],
@@ -241,6 +239,8 @@ int ivshmem_init(unsigned int bfd, struct ivshmem *ivshmem)
 
 			if (ret < 0)
 				goto err;
+
+			next_addr += ivshmem->out_size;
 		}
 	} else {
 		for (i = 0; i < ivshmem->peers; i++) {
