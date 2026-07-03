@@ -198,7 +198,16 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 #ifndef MBOX_TRANSPORT_RPMSG
 	__DSB();
 
-	l_resp->seq = mbox->last_cmd;
+	/* Response seq must increment PER RESPONSE MESSAGE, not per command. The
+	 * RPC layer sends TWO messages per command over this channel (a byte-level
+	 * ACK and the response data). The old `l_resp->seq = mbox->last_cmd` gave
+	 * both the same seq, so the receiver (mailbox_resp_recv, gated on
+	 * seq != last_resp) latched the first and silently dropped the second ->
+	 * the client got the ACK but never the response data (or vice versa).
+	 * Mirror mailbox_cmd_send's per-send counter; l_resp->seq has a single
+	 * writer (this side) so a plain increment is safe. The stop-and-wait gate
+	 * above (l_cmd->last_resp != l_resp->seq) still serialises sends. */
+	l_resp->seq = l_resp->seq + 1;
 #else
 	if (rpmsg_send(mbox->transport, r, sizeof(*r)))
 		return -3;
