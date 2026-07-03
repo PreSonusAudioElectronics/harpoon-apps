@@ -211,7 +211,7 @@ int ivshmem_init(unsigned int bfd, struct ivshmem *ivshmem)
 
 	if (ivshmem->rw_size) {
 		ret = os_mmu_map("ivshmem rw", (uint8_t **)&ivshmem->rw,
-				(uintptr_t)next_addr, ivshmem->state_size,
+				(uintptr_t)next_addr, ivshmem->rw_size,
 				OS_MEM_CACHE_WB | OS_MEM_PERM_RW);
 		if (ret < 0)
 			goto err;
