@@ -8,7 +8,6 @@
 #define _MAILBOX_H_
 
 #include <stdbool.h>
-#include <stdint.h>
 
 enum mailbox_ret_codes
 {
