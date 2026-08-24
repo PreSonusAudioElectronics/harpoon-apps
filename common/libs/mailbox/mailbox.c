@@ -216,7 +216,32 @@ int mailbox_resp_send(struct mailbox *mbox, void *data, unsigned int len)
 	return kMailboxSuccess;
 }
 
-int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir, 
+int mailbox_get_state(struct mailbox *mbox, struct mailbox_state *out)
+{
+	struct cmd *l_cmd;
+	struct resp *l_resp;
+
+	if (!mbox || !out || !mbox->cmd || !mbox->resp)
+		return kMailboxBadArgument;
+
+	l_cmd = (struct cmd *)mbox->cmd;
+	l_resp = (struct resp *)mbox->resp;
+
+	out->cmd_initialized = (l_cmd->magic == MAILBOX_MAGIC);
+	out->cmd_seq = l_cmd->seq;
+	out->cmd_last_resp = l_cmd->last_resp;
+
+	out->resp_initialized = (l_resp->magic == MAILBOX_MAGIC);
+	out->resp_seq = l_resp->seq;
+	out->resp_last_cmd = l_resp->last_cmd;
+
+	out->local_last_cmd = mbox->last_cmd;
+	out->local_last_resp = mbox->last_resp;
+
+	return kMailboxSuccess;
+}
+
+int mailbox_init(struct mailbox *mbox, void *cmd, void *resp, bool dir,
 	void *tp, bool enforce_cmd_match_on_rx)
 {
 	struct resp *l_resp;
