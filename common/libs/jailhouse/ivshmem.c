@@ -63,12 +63,7 @@ struct comm_region {
 #define IVSHMEM_CAP_OUT_SIZE	16
 #define IVSHMEM_CAP_ADDR	24
 
-/* MMIO registers */
-#define IVSHMEM_REG_ID                  0x00
-#define IVSHMEM_REG_MAX_PEERS           0x04
-#define IVSHMEM_REG_INT_CTRL            0x08
-#define IVSHMEM_REG_DOORBELL            0x0c
-#define IVSHMEM_REG_STATE               0x10
+/* MMIO register offsets now live in ivshmem.h, shared with the doorbell users */
 
 static uint32_t mmio_read32(void *base, unsigned int offset)
 {
@@ -157,7 +152,6 @@ int ivshmem_init(unsigned int bfd, struct ivshmem *ivshmem)
 	void *cfg_base;
 	void *pci;
 	void *cap;
-	void *mmio;
 	uint8_t next_cap;
 	uintptr_t next_addr, state;
 	int ret, i;
@@ -184,7 +178,7 @@ int ivshmem_init(unsigned int bfd, struct ivshmem *ivshmem)
 	/* Update device BAR0 with our MMIO address */
 	pci_write_config(pci, PCI_CFG_BAR0, PCI_MMIO_BASE, 4);
 
-	ret = os_mmu_map("pci mmio", (uint8_t **)&mmio,
+	ret = os_mmu_map("pci mmio", (uint8_t **)&ivshmem->mmio,
 			(uintptr_t)PCI_MMIO_BASE, KB(4),
 			OS_MEM_CACHE_NONE | OS_MEM_PERM_RW);
 	if (ret < 0)
@@ -194,8 +188,8 @@ int ivshmem_init(unsigned int bfd, struct ivshmem *ivshmem)
 	pci_write_config(pci, PCI_CFG_CMD, PCI_CMD_MEM, 2);
 
 	/* Find device in PCI configuration */
-	ivshmem->id = mmio_read32(mmio, IVSHMEM_REG_ID);
-	ivshmem->peers = mmio_read32(mmio, IVSHMEM_REG_MAX_PEERS);
+	ivshmem->id = mmio_read32(ivshmem->mmio, IVSHMEM_REG_ID);
+	ivshmem->peers = mmio_read32(ivshmem->mmio, IVSHMEM_REG_MAX_PEERS);
 	ivshmem->state_size = pci_read_config(cap, IVSHMEM_CAP_STATE_SIZE, 4);
 	ivshmem->rw_size = pci_read_config64(cap, IVSHMEM_CAP_RW_SIZE);
 	ivshmem->out_size = pci_read_config64(cap, IVSHMEM_CAP_OUT_SIZE);
@@ -254,4 +248,14 @@ err:
 	log_err("ivshmem init failed\n");
 
 	return -1;
+}
+
+void ivshmem_ring_doorbell(struct ivshmem *ivshmem, unsigned int peer_id,
+		unsigned int vector)
+{
+	if (!ivshmem || !ivshmem->mmio)
+		return;
+
+	mmio_write32(ivshmem->mmio, IVSHMEM_REG_DOORBELL,
+			(peer_id << IVSHMEM_DOORBELL_PEER_SHIFT) | vector);
 }
