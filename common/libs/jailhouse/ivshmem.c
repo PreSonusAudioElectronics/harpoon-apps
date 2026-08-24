@@ -63,8 +63,6 @@ struct comm_region {
 #define IVSHMEM_CAP_OUT_SIZE	16
 #define IVSHMEM_CAP_ADDR	24
 
-/* MMIO register offsets now live in ivshmem.h, shared with the doorbell users */
-
 static uint32_t mmio_read32(void *base, unsigned int offset)
 {
 	return *((volatile uint32_t *)((uintptr_t)base + offset));
@@ -248,6 +246,15 @@ err:
 	log_err("ivshmem init failed\n");
 
 	return -1;
+}
+
+void ivshmem_enable_interrupts(struct ivshmem *ivshmem, int enable)
+{
+	if (!ivshmem || !ivshmem->mmio)
+		return;
+
+	mmio_write32(ivshmem->mmio, IVSHMEM_REG_INT_CTRL,
+			enable ? 1 : 0);
 }
 
 void ivshmem_ring_doorbell(struct ivshmem *ivshmem, unsigned int peer_id,
